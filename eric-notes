@@ -1,0 +1,617 @@
+// /*
+
+// * Mapping a => b
+// * Functor mapping F(a) = F(b)
+// * Flat mapping a => M(b)
+
+// g:           a => b
+// f:                b => c
+// h = f(g(a)): a    =>   c
+
+// g:             F(a) => F(b)
+// f:                     F(b) => F(c)
+// h = f(g(Fa)):  F(a)    =>      F(c)
+
+// g:                  a => M(b)
+// f:                       b => M(c)
+// h = composeM(f, g): a    =>   M(c)
+
+
+// g:                  a => M(b) =flatten=> b
+// f:                                       b => M(c)
+// h = composeM(f, g): a        =flatten=>=map=> M(c)
+
+// promise
+//   .then(g)
+//   .then(f)
+// ;
+
+// * Lift             a => M(a)
+// * Flatten/join  M(a) => a
+
+// * Chain      M(M(a)) => M(b)
+
+
+// */
+
+// {
+//   const x = 20;             // Some data of type `a`
+//   const f = n => n * 2;     // A function from `a` to `b`
+//   const arr = Array.of(x);  // The type lift  [x] is syntax sugar for lift
+
+//   // .map() applies the function f to the value x
+//   // in the context of the array.
+//   //  F(a) => F(b)
+//   const result = arr.map(f); // [40]
+
+//   [].concat.apply([], [[1], [2, 3], [4]]); // [1, 2, 3, 4]
+// }
+
+
+// const trace = label => value => {
+//   console.log(`${label} : ${value}`);
+//   return value;
+// }
+
+// const Id = value => ({
+//   map: f => Id(f(value)),
+//   chain: f => f(value),
+//   toString: () => `Id(${ value })`
+// });
+
+// Id.of = Id;
+
+// // Maybe monad
+// // pieces live in different places
+
+// // shared chain
+// // Just(v)   .chain() = map into Just.of(f(value))
+// //           .of()
+// // Nothing() .chain() = return Nothing()
+// //           .of()
+
+// // maybe function
+
+// const composeM = chain => (...ms) => ms.reduce((f, g) => x => g(x)[chain](f));
+
+// const composeP = composeM('then');
+
+
+// /* Monad laws dum dum dum!!!
+// * Left identity
+// * Right Identity
+// * Associativity (composition must be associative)
+// (f . g) . h = f . (g . h)
+
+
+// */
+
+// {
+//   const g = n => Id(n + 1);
+//   const h = n => Id(n * 2);
+//   // A -- f --> C // Kleisli Composition
+
+
+//   const x = 20;
+//   const a = Id(20).chain(g).chain(h);
+//   const b = Id(20).chain(x => g(x).chain(h));
+//   trace('associativity')([a, b]);
+// }
+
+// { // Left & Right Identity
+//   // A -- f --> B -- g --> C
+//   // For each f A -> B: h: A -> C
+//   /* Category theory backiground
+//   Identity arrows: For each object X in category C': Id_X: X -> X
+//   f . Id_A = f = Id_B . f
+//   */
+//   const f = n => Id(n * 2);
+//   const x = 20;
+
+//   const a = Id(x).chain(f);
+//   const b = f(x);
+//   trace('left identity')([a.toString(), b.toString()]);
+// }
+
+// {
+//   const f = n => Id(n * 2);
+//   const x = 20;
+
+//   const a = Id(x).chain(Id);
+//   const b = Id(x);
+//   trace('left identity')([a.toString(), b.toString()]);
+// }
+
+
+// {
+//   const Nothing = value => ({
+//     chain: f => Nothing(),
+//     toString: () => `Nothing()`
+//   });
+
+//   // .of = type lift -- standard way in JS
+//   // via Fantasy-Land, Array.of, etc...
+//   Nothing.of = Nothing;
+//   const x = 20;
+//   const g = n => Nothing.of(n + 1);
+//   const f = n => Nothing.of(n * 2);
+
+
+//   {
+//     // left identity
+//     const a = Nothing(x).chain(f);
+//     const b = f(x);
+//     console.log('Left', [a.toString(), b.toString()])
+//   }
+//   {
+//     const m = Nothing(x);
+//     const a = m.chain(Nothing.of)
+//     const b = m
+
+//     console.log('Right',[a.toString(), b.toString()])
+//   }
+//   {
+//     // //associativity: f . (g . h) = (f. g) . h
+//   	const m = Nothing(x);
+//     const a = m.chain(f).chain(g)
+//     const b = m.chain(x => f(x).chain(g))
+
+//     console.log('associativity',[a.toString(), b.toString()])
+
+//   }
+// }
+
+// // Transducers
+// const map = f => step => ((a, c, ...rest) => step(a, f(c), ...rest));
+
+/*
+Transducers = higher-order reducers - I'll call the next reducer, but before that, I'll do my thing.
+
+const composed = compose(
+  filter(isEven),
+  map(double)
+);
+
+reducer type sig:
+reducer(a, c) => newA
+
+* No need to iterate over whole collection to produce new values == faster!
+* Streamable!
+* Composable!
+
+*/
+// data type ish thing : reduced
+// type lift v => reduced(v)
+// flatten/aka join reduced(v) => v
+// {
+
+// }
+
+
+// {
+//  const obj = { a : 1 }
+//  const { a } = obj;
+//  console.log(a);
+// }
+
+
+
+
+{
+  const Id = value => ({
+  	chain: fn => fn(value),
+    toString: () => `Id(${value})`
+  });
+  Id.of = Id;
+
+  {
+    const label = 'associativity';
+    // ==== = same shape, (maybe) different identity
+    // (f . g) . h ==== f . (g . h)
+    const f = Id.of;
+    const g = n => Id.of(n + 1);
+    const h = n => Id.of(n * 2);
+    const x = 20;
+
+    const a = f(x).chain(g).chain(h);
+    const b = f(x).chain(n => g(n).chain(h));
+
+    console.log([a.toString(), b.toString()]);
+  }
+
+    const x = 20;
+    const m = Id.of(x)
+    const h = n => Id.of(n * 2);
+
+  {
+	// Left
+    // m.chain(h) ==== h(x)
+    const a = m.chain(h)
+    const b = h(x);
+    console.log(a.toString(), b.toString());
+
+  }
+  { //     // m.chain(Id.of) = m
+    const a = m.chain(Id.of)
+    const b = m
+
+    console.log(a.toString(), b.toString())
+  }
+}
+
+
+// Transducers
+// a higher order reducer
+// a way to compose reducers
+// transformations on some data stream
+// don't care what the underlying data structure is,
+// data agnostic
+// same code for many kinds of things
+// transduce all the things
+// doesn't have to buffer and recreate the entire collection for each transformation that you compose
+
+// your collections/streams can be infinite
+// stream is a list expressed over time
+
+const compose = (...args) => args.reduce((f, g) => x => f(g(x)));
+
+
+
+{
+  // Transduce all the things!
+  // map:: Functor F => (a -> b) -> F a -> F b
+
+}
+
+
+/*
+Transducers
+Higher order functions
+* Composable
+* Streaming (one value at a time)
+* Can operate over many container contexts (arrays, streams, obs, trees, tries, graphs, etc..)
+* You can break out of enumeration
+* Lazy or eager
+*/
+
+
+{
+  const map = xform => step => (acc, curr, ...rest) => step(acc, xform(curr), ...rest);
+  const filter = predicate => step => (acc, curr, ...rest) => predicate(curr) ? step(acc, curr, ...rest) : acc;
+
+  const transduce = (transducer, step, initial, foldable) => foldable.reduce(transducer(step), initial);
+
+  const isEven = n => n % 2 === 0;
+  const double = n => n * 2;
+
+  const doubleEvens = compose(
+    filter(isEven),
+    map(double)
+  );
+
+  const arr = [1, 2, 3, 4, 5, 6];
+  const concatArray = (acc, curr) => acc.concat([curr]);
+
+  const arr2 = transduce(doubleEvens, concatArray, [], arr);
+  console.log(arr2);
+}
+
+
+{
+  // concat
+  // empty value
+  // 'abc' + '123' = 'abc123' = 'abc123' + ''
+  // ['a', 'b'].concat([1,2]) = ['a', 'b' ...].concat([])
+  // clock(v) => { concat, empty }
+  const clock = a => ({
+  	concat: (b) => a + b > 12 ? (a + b) % 12 + 12 : b,
+    empty: 12
+  })
+}
+//clock(9).concat((a) => a + 3);
+
+// concat
+// empty value
+// 'abc' + '123' = 'abc123' = 'abc123' + ''
+// ['a', 'b'].concat([1,2]) = ['a', 'b' ...].concat([])
+// clock(v) => { concat, empty }
+const Clock = a => ({
+  concat: (b) => Clock((a + b) % Clock.empty),
+  toString: () => `Clock(${a})`,
+  valueOf: () => a
+});
+Object.assign(Clock, {
+  get empty () {
+    return Clock(12);
+  }
+});
+Object.freeze(Clock);
+
+//clock(9).concat((a) => a + 3);
+
+
+/*
+left identity
+M.empty.concat(M(x)) ==== M(x)
+*/
+
+const x = -16;
+{
+  const a = Clock.empty.concat(Clock(x));
+  const b = Clock(x);
+  console.log(
+    'left identity',
+    a.toString(),
+    b.toString()
+  );
+  console.clear();
+
+
+// concat
+// empty value
+// 'abc' + '123' = 'abc123' = 'abc123' + ''
+// ['a', 'b'].concat([1,2]) = ['a', 'b' ...].concat([])
+// clock(v) => { concat, empty }
+const Clock = a => ({
+  concat: (b) => Clock((a + b) % Clock.empty),
+  toString: () => `Clock(${a})`,
+  valueOf: () => a
+});
+Object.assign(Clock, {
+  get empty () {
+    return Clock(12);
+  }
+});
+Object.freeze(Clock);
+
+//clock(9).concat((a) => a + 3);
+
+
+/*
+left identity
+M.empty.concat(M(x)) ==== M(x)
+*/
+
+const x = -16;
+{
+  const a = Clock.empty.concat(Clock(x));
+  const b = Clock(x);
+  console.log(
+    'left identity',
+    a.toString(),
+    b.toString()
+  );
+}
+
+{
+//  right identity
+//  M(x).concat(M.empty) ==== M(x)
+  const a = Clock(x).concat(Clock.empty);
+  const b = Clock(x);
+
+  console.log(
+    'right identity',
+    a.toString(),
+    b.toString()
+  );
+}
+
+/*
+right identity
+M(x).concat(M.empty) ==== M(x)
+
+associativity (doesn't matter where the parens go)
+M(x).concat(M(y).concat(M(z)) ====
+M(M(x).concat(M(y)).concat(M(z))
+*/
+
+const pair = (a, b) => [a, b];
+/*
+const linkedList = [1,2,3,4].reduce(pair, []);
+console.log(linkedList);
+*/
+/*
+Abstraction - DRY
+hides noise under the hood
+Take away the specific/non-essentials
+
+Axioms - a fundamental law that governs a particular abstraction
+
+Algebraic data type - type, along with the operations on that type
+F-algebra - Fixed type, data, operations
+Evaluating an F-Algebra - Just variable substitution
+
+Lisp is almost a direct translation of lambda calculus
+
+bindings / variables (names for functions)
+functions
+function applications
+
+Lambda calculus ingredients:
+v variable bindings
+f functions
+f(v) function applications
+
+Complete function - a function which is defined for every possible value in its domain.
+
+Number -> Clock(Number)
+undefined - default value (12)
+NaN - (12)
+Infinity
+*/
+
+/*
+	Category theory
+ 	Developing a unified theory of everything
+    can model anything
+    inside the universe of mathematics there are a lot
+    of ways of talking about different things
+
+    identity's point to something
+    composition is the only operator in all of category
+    can model all branches of math with category theory
+
+    isomorphism - for every function in a category of functions
+    there exists a function in the isomorphic category which is equivelent (and the reverse is also true !!! ) [ There is  a 2way mapping between categorys ] 1 - 1 bi directional mapping
+
+    they aren't the same, but functionally equivelent.
+
+
+  Monoids
+  Concat is associative (a + b) + c = a + (b + c)
+  Empty - is like the identity function for a transducing process
+
+  type transform = a => b
+*/
+
+	const map = xform => step => (...args) => {
+      const [a = step(), c] = args;
+      const { length } = args;
+
+      switch (length) {
+        case 0: return a;
+        default: return step(acc, xform(curr));
+      }
+    };
+
+	const concatArray = (...args) => {
+      const [ a = [], c ] = args;
+      const { length } = args;
+
+      switch (length) {
+        case 0: return a;
+        default: return a.concat([ c ]);
+      }
+    }
+
+{
+  // make sure map supplies empty
+  const reducer = map(x => x * 2)(concatArray);
+  const a = reducer();
+  const b = [];
+
+  console.log(a, b);
+}
+
+console.clear();
+
+
+/*
+Every transducer must implement 3 arities:
+0: Empty
+1: Completion usually - step(a) but sometimes step(a, lastValueFromTstate)
+2+ (default) Transduce
+
+Ramda transucer & transducers.js implement the transducer protocol
+createTransducer({
+  init,
+  complete,
+  transduce
+});
+*/
+const map = fn => step => (...args) => {
+  const [a = step(), c] = args;
+  const { length } = args;
+
+  switch (length) {
+    case 0: return a;
+    case 1: return step(a);
+    default: return step(a, fn(c));
+  }
+};
+
+
+{
+  const reducer = map(x => x * 2)(concatArray);
+  const a = reducer();
+  const b = [];
+}
+
+
+# React
+
+## Why Does React exist?
+
+Deterministic view renders.
+
+## Component lifecycle events
+
+* Restricts how you can call setState()
+
+## What is setState()?
+
+* Trigger renders in React
+* Change values that component stores (component state)
+
+setState(updater, onUpdated?) => Void
+
+updater
+
+Is a reducer function
+
+(state, props) => newState
+
+* should be a pure function
+
+```js
+this.setState({ count: this.state.count + 1 });
+this.setState({ count: this.state.count + 1 });
+this.setState({ count: this.state.count + 1 });
+
+Object.assign({}, state, a, b, c);
+```
+
+
+## React event handling
+
+### Synthetic events
+
+A synthetic event is a facade around the native browser event, based on the standard w3c API, which smooths out differences between browsers.
+
+
+#### Automatic event delegation
+
+Events automatically delegate to the react root element.
+
+#### Event pooling
+
+Events are object pooled.
+
+Holds the garbage collector at bay.
+
+React nulls out the event, stuffs it back into the pool, and leaves you holding an empty bag.
+
+## Lifecycle methods
+- TEST performance / profile!!
+* componentWillMount
+ - initialize app config
+ - do things that will not cause a change to the render cycle
+ - hook up event handlers? maybe
+* DidMount
+ - api calls
+ - hook up event handlers that cause dispatches to the stores
+* componentWillUnmount
+ - clean up!
+ - open any network connections in willMount or didMount ? close them here
+//update
+* willReceiveProps
+ -  note of caution
+ - this one is not guarenteed to run only once per update!
+* shouldComponentUpdate
+ - may have children that do not need to render
+ - here you may implement a pure component
+ - shallow props check
+  // please profile before using this
+* componentWillUpdate
+  - last chance to do something before we call render,
+  - probably don't do anything async
+  - do not call set state ( duh );
+  - update redux state has important side effect of calling setState;
+* render
+  - puts stuff on the dom!
+  - don't call setState()
+  - watch out for async stuff 'cause things will be weird
+* componentDidUpdate
+  - If you need to do anything based on how the DOM actually got rendered (what's visible on the screen, sizes of real components, etc...)
+
+
